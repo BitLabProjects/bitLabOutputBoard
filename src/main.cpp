@@ -1,10 +1,16 @@
-#include <mbed.h>
+#include "bitLabCore\src\os\bitLabCore.h"
+#include "bitLabCore\src\net\RingNetwork.h"
 
-DigitalOut myled(A0);
+bitLabCore core;
 
 int main()
 {
-  // put your setup code here, to run once:
+  core.init();
+  core.addModule(new RingNetwork(A9, A10));
+  core.run();
+
+  /*
+  DigitalOut myled(A0);
   while (1)
   {
     myled = 1;
@@ -12,4 +18,5 @@ int main()
     myled = 0;
     wait(0.4);
   }
+  */
 }

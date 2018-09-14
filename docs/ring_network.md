@@ -13,7 +13,9 @@ There are the following concerns:
 
 # Packet structure
 
- Start - Control - Addresses - Data - Crc - End
+ Start[1] - Control[1] - Addresses[2] - Data[1-257] - Crc[4] - End[1]
+
+Max packet size: 1+2+257+4 = 264, plus start and end it's 266
 
 ### Start
 1x Byte with value 85
@@ -25,6 +27,7 @@ Control = 2: Data packet for upper layer, Data must be passed to upper layer<br>
 1x Byte with the address of the source<br>
 1x Byte with the address of the destination
 ### Data
+1x Byte length of following data<br>
 [0-256]x Bytes with the data of this packet
 ### Crc
 4x Bytes with the hash of this packet, containing everything except Start, Crc and End
