@@ -13,24 +13,27 @@ There are the following concerns:
 
 # Packet structure
 
- Start[1] - Control[1] - Addresses[2] - Data[1-257] - Crc[4] - End[1]
+ Start[1] - Header[5] - Data[0-256] - Footer[4] - End[1]
 
-Max packet size: 1+2+257+4 = 264, plus start and end it's 266
+Max packet size: 5+256+4 = 265, plus start and end it's 267
 
 ### Start
 1x Byte with value 85
-### Control
-1x Byte that specifies the kind of packet<br>
-Control = 1: Protocol packet, more details in Data<br>
-Control = 2: Data packet for upper layer, Data must be passed to upper layer<br>
-### Addresses
+### Header
+1x Byte with length of Data block<br>
+1x Byte with the following bits:<br>
+bit 0: <br>
+ 0=Protocol packet, more details in Data<br>
+ 1=Data packet for upper layer, Data must be passed to upper layer<br>
+bit 1-7: reserved<br>
 1x Byte with the address of the source<br>
-1x Byte with the address of the destination
+1x Byte with the address of the destination<br>
+1x Byte with Time to live: when it reaches 0 the packet is dropped. This value prevents packet from going around forever<br>
+
 ### Data
-1x Byte length of following data<br>
 [0-256]x Bytes with the data of this packet
-### Crc
-4x Bytes with the hash of this packet, containing everything except Start, Crc and End
+### Footer
+4x Bytes with the hash of this packet, containing everything except Start, hash and End
 ### End
 1x Byte with value 170
 
