@@ -6,7 +6,7 @@ bitLabCore core;
 int main()
 {
   core.init();
-  core.addModule(new RingNetwork(A9, A10));
+  core.addModule(new RingNetwork(A9, A10, core.getHardwareId()));
   core.run();
 
   /*

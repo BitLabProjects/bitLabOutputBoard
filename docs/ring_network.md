@@ -44,3 +44,14 @@ The sequence <br>
 10 65 <span style="color:red">85</span> 72 <span style="color:red">27</span><br>
 Becomes <br>
 10 65 <span style="color:green">27</span> <span style="color:red">85</span> 72 <span style="color:green">27</span> <span style="color:red">27</span>
+
+# Free packet injection
+When the devices in the network are powered up, no packet is circulating. The same thing happens when a packet is lost, since only one packet can circulate. Every device must have a timer of 500ms that is resetted every time a packet is received. When the timer reaches zero, another timer starts with a delay between 0 and 500ms based on the device hardware id. When the second timer reaches zero, a free packet is sent and the monitoring for silence starts again.
+TODO someone must drop multiple free packets from circulation
+
+# Address assignment
+A device has no address assigned to it once it joins the network. To reserve itself an address, it must follow this procedure:<br>
+1. Generate an arbitrary address for itself based on its hardware id
+1. Send an 'Address claim' packet with the generated address as both source and destination, specifying the device name in the payload
+1. Wait to receive the packet back: when the packet arrives the payload must be checked to see if the device name matches. If it does the address is assigned, if it does not the procedure starts over
+1. When a device receives an 'Address claim' packet with its address as destination, it must discard it. This happens regardless of whether the device is in address assign state.
