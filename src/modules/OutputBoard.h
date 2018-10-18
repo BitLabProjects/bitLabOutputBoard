@@ -21,7 +21,7 @@ private:
   DigitalOut led;
   millisec64 time;
 
-  void dataPacketReceived(RingPacket*, PTxAction*);
+  void onPacketReceived(RingPacket*, PTxAction*);
 };
 
 #endif

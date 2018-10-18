@@ -11,7 +11,7 @@ void OutputBoard::init(const bitLabCore *core)
   ringNetwork = (RingNetwork *)core->findModule("RingNetwork");
   if (ringNetwork != NULL)
   {
-    ringNetwork->attachDataPacketReceived(callback(this, &OutputBoard::dataPacketReceived));
+    ringNetwork->attachOnPacketReceived(callback(this, &OutputBoard::onPacketReceived));
   }
 }
 
@@ -28,7 +28,7 @@ void OutputBoard::tick(millisec64 timeDelta)
   time += timeDelta;
 }
 
-void OutputBoard::dataPacketReceived(RingPacket* p, PTxAction* pTxAction)
+void OutputBoard::onPacketReceived(RingPacket* p, PTxAction* pTxAction)
 {
   *pTxAction = PTxAction::SendFreePacket;
 
