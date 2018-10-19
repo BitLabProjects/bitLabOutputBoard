@@ -32,6 +32,8 @@ void OutputBoard::mainLoop()
     time = 0;
     led = !led;
   }
+
+  storyboardPlayer.fillPlayBuffer();
 }
 
 void OutputBoard::tick(millisec64 timeDelta)
@@ -39,7 +41,7 @@ void OutputBoard::tick(millisec64 timeDelta)
   time += timeDelta;
 
   // Advance the storyboard
-  storyboardPlayer.tick(timeDelta);
+  storyboardPlayer.advance(timeDelta);
 
   // Update outputs at 60Hz
   timeSinceLastOutputRefresh += timeDelta;
