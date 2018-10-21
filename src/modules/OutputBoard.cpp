@@ -55,9 +55,12 @@ void OutputBoard::tick(millisec timeDelta)
       outputStates[i].update(storyboardTime);
       int value = outputStates[i].value;
 
-      if (i < 12) {
+      if (i < 12)
+      {
         pwmOut[i].write(Utils::clamp01(value / 4096.0));
-      } else {
+      }
+      else
+      {
         digitalOut[i - 12] = (value == 0) ? 0 : 1;
       }
     }
@@ -72,6 +75,18 @@ void OutputBoard::onSetOutput(int output, int value, millisec startTime, millise
   }
 }
 
+enum EMsgType
+{
+  SetLed = 1,
+  CreateStoryboard = 2,
+  SetTimelineEntries = 3,
+  GetStoryboardChecksum = 4,
+  TellStoryboardChecksum = 5,
+};
+
+// TODO Validate timelines: entries should be ordered by time
+// TODO Calculate storyboard checksum to verify the storyboard upload was successful
+
 void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
 {
   *pTxAction = PTxAction::SendFreePacket;
@@ -81,19 +96,119 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
   if (data_size < 1)
     return; //Too short
 
-  auto msgType = p->data[0];
-  if (msgType == 1)
-  { //Set output
+  auto msgType = (EMsgType)p->data[0];
+  switch (msgType)
+  {
+  case EMsgType::SetLed:
     if (data_size < 2)
       return; //Too short
 
     // Negate because 0 means down, the led is pulled down
     led = !p->data[1];
-    return;
-  }
-  else
+    break;
+
+  case EMsgType::CreateStoryboard:
   {
-    // Unknown message type, discard
-    return;
+    // Data structure:
+    // [1] = timelines count
+    // [2-5] = total duration in milliseconds
+    // Repeat for 'timelines count'
+    // [0] = output (starting from 1)
+    // [1] = entries capacity
+
+    // Stop if playing
+    storyboardPlayer.stop();
+
+    if (data_size < 1 + 1 + 4)
+      return; //Too short
+
+    uint8_t timelinesCount = p->data[1];
+    millisec totalDuration = *((millisec *)&p->data[2]);
+    if (timelinesCount > 32)
+    {
+      // TODO Signal: can't have too many timelines, the data size is 256 bytes
+      // We use 32 here but the theoretical max is (256 - 1 - 4) / 2 = 125
+      timelinesCount = 32;
+    }
+
+    storyboard.create(timelinesCount, totalDuration);
+    for (int i = 0; i < timelinesCount; i++)
+    {
+      uint8_t output = p->data[6 + i + 0];
+      uint8_t entriesCapacity = p->data[6 + i + 1];
+      storyboard.addTimeline(output, entriesCapacity);
+    }
+  }
+  break;
+
+  case EMsgType::SetTimelineEntries:
+  {
+    // Data structure:
+    // [1] = output (starting from 1)
+    // [2] = first entry idx
+    // [3] = entries count
+    // Repeat for 'entries count'
+    // [0-3]  = time
+    // [4-7]  = value
+    // [8-11] = duration
+
+    // Stop if playing
+    storyboardPlayer.stop();
+
+    if (data_size < 1 + 1 + 1)
+      return; //Too short
+
+    uint8_t output = p->data[1];
+    uint8_t firstEntryIdx = p->data[2];
+    uint8_t entriesCount = p->data[3];
+    if (entriesCount > 20)
+    {
+      // TODO Signal: can't have too many timelines, the data size is 256 bytes
+      // We use 20 here but the theoretical max is (256 - 1 - 1 - 1) / 12 = 21
+      entriesCount = 20;
+    }
+
+    auto timeline = storyboard.getTimeline(output);
+    if (timeline == NULL)
+    {
+      //TODO Signal timeline not found
+      return;
+    }
+
+    auto entryIdx = firstEntryIdx;
+    for (int i = 0; i < entriesCount; i++)
+    {
+      millisec time = *((millisec *)&p->data[4 + i + 0]);
+      int32_t value = *((int32_t *)&p->data[4 + i + 4]);
+      millisec duration = *((millisec *)&p->data[4 + i + 8]);
+      timeline->set(entryIdx, time, value, duration);
+      entryIdx += 1;
+    }
+  }
+  break;
+
+  case EMsgType::GetStoryboardChecksum:
+  {
+    // Data structure: Empty
+
+    uint32_t crc32 = storyboard.calcCrc32(0);
+
+    // Fill header
+    p->header.data_size = 1 + 4;
+    p->header.control = 1;
+    p->header.dst_address = p->header.src_address; // Respond to the sender
+    p->header.src_address = ringNetwork->getAddress();
+    p->header.ttl = RingNetworkProtocol::ttl_max;
+    // Fill data
+    p->data[0] = EMsgType::TellStoryboardChecksum;
+    *(uint32_t *)(&p->data[1]) = crc32;
+    //
+    *pTxAction = PTxAction::Send;
+  }
+  break;
+
+  default:
+    // Unknown, discard
+    break;
   }
 }
