@@ -17,7 +17,7 @@ public:
   const char* getName() { return "OutputBoard"; }
   void init(const bitLabCore*);
   void mainLoop();
-  void tick(millisec64 timeDelta);
+  void tick(millisec timeDelta);
   // ------------------
 
 private:

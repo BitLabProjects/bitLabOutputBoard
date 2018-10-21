@@ -36,7 +36,7 @@ void OutputBoard::mainLoop()
   storyboardPlayer.fillPlayBuffer();
 }
 
-void OutputBoard::tick(millisec64 timeDelta)
+void OutputBoard::tick(millisec timeDelta)
 {
   time += timeDelta;
 
