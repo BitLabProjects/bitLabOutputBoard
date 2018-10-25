@@ -41,6 +41,9 @@ void OutputBoard::tick(millisec timeDelta)
   time += timeDelta;
 
   // Advance the storyboard
+  if (false)
+  {
+    /*
   storyboardPlayer.advance(timeDelta);
 
   // Update outputs at 60Hz
@@ -65,6 +68,8 @@ void OutputBoard::tick(millisec timeDelta)
       }
     }
   }
+    */
+}
 }
 
 void OutputBoard::onSetOutput(int output, int value, millisec startTime, millisec duration)
@@ -82,6 +87,11 @@ enum EMsgType
   SetTimelineEntries = 3,
   GetStoryboardChecksum = 4,
   TellStoryboardChecksum = 5,
+  SetStoryboardTime = 6,
+  Play = 7,
+  Pause = 8,
+  Stop = 9,
+  DebugPrint = 255
 };
 
 // TODO Validate timelines: entries should be ordered by time
@@ -134,9 +144,10 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     storyboard.create(timelinesCount, totalDuration);
     for (int i = 0; i < timelinesCount; i++)
     {
-      uint8_t output = p->data[6 + i + 0];
-      uint8_t entriesCapacity = p->data[6 + i + 1];
-      storyboard.addTimeline(output, entriesCapacity);
+      auto offset = 6 + i * 2;
+      uint8_t output = p->data[offset + 0];
+      uint8_t entriesCapacity = p->data[offset + 1];
+      storyboard.addTimeline(0, output, entriesCapacity);
     }
   }
   break;
@@ -155,7 +166,7 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     // Stop if playing
     storyboardPlayer.stop();
 
-    if (data_size < 1 + 1 + 1)
+    if (data_size < 1 + 1 + 1 + 1)
       return; //Too short
 
     uint8_t output = p->data[1];
@@ -178,10 +189,11 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     auto entryIdx = firstEntryIdx;
     for (int i = 0; i < entriesCount; i++)
     {
-      millisec time = *((millisec *)&p->data[4 + i + 0]);
-      int32_t value = *((int32_t *)&p->data[4 + i + 4]);
-      millisec duration = *((millisec *)&p->data[4 + i + 8]);
-      timeline->set(entryIdx, time, value, duration);
+      auto offset = 4 + i * 12;
+      millisec time = p->getDataInt32(offset + 0);
+      int32_t value = p->getDataInt32(offset + 4);
+      millisec duration = p->getDataInt32(offset + 8);
+      timeline->setEntry(entryIdx, time, value, duration);
       entryIdx += 1;
     }
   }
@@ -206,6 +218,42 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     *pTxAction = PTxAction::Send;
   }
   break;
+
+  case EMsgType::SetStoryboardTime:
+  {
+    // Data structure:
+    // [1-4] = storyboard time
+
+    if (data_size < 1 + 4)
+      return; //Too short
+
+    millisec storyboardTime = *((millisec *)&p->data[1]);
+    // TODO
+    //storyboardPlayer.setStoryboardTime(storyboardTime);
+  }
+  break;
+
+  case EMsgType::Play:
+  {
+    // Data structure: Empty
+    storyboardPlayer.play();
+  }
+  break;
+
+  case EMsgType::Pause:
+  {
+    // Data structure: Empty
+    storyboardPlayer.pause();
+  }
+  break;
+
+  case EMsgType::Stop:
+  {
+    // Data structure: Empty
+    storyboardPlayer.stop();
+  }
+  break;
+  
 
   default:
     // Unknown, discard

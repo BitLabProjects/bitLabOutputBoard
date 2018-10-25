@@ -2,13 +2,15 @@
 #include "bitLabCore\src\net\RingNetwork.h"
 #include "modules\OutputBoard.h"
 
+bitLabCore core;
+RingNetwork rn(PB_6, PB_7, false);
+OutputBoard ob;
 
 int main()
 {
-  bitLabCore core;
   core.init();
-  core.addModule(new RingNetwork(PB_6, PB_7, core.getHardwareId(), false));
-  core.addModule(new OutputBoard());
+  core.addModule(&rn);
+  core.addModule(&ob);
   core.run();
   
   /*
