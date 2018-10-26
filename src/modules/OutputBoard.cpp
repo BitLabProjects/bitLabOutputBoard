@@ -19,8 +19,9 @@ OutputBoard::OutputBoard() : //led(PC_13),
 
 void OutputBoard::init(const bitLabCore *core)
 {
-  if (false) {
-    // Disabled for now: no need to set priority because tickers do only a few assignments
+  if (true)
+  {
+    // TODO Understand if this works and is correct
     // TIM4_IRQn is the timer used by mbed Ticker in STM32F1
     // see framework-mbed\targets\TARGET_STM\TARGET_STM32F1\TARGET_NUCLEO_F103RB\device\hal_tick.h
     HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_3);
@@ -44,53 +45,50 @@ void OutputBoard::mainLoop()
     //led = !led;
   }
 
-  __disable_irq();
-  millisec deltaToAdvance = timeDeltaForPlay;
-  timeDeltaForPlay = 0;
-  __enable_irq();
+  storyboardPlayer.fillPlayBuffer();
+}
 
-  if (deltaToAdvance > 0) {
-    storyboardPlayer.advance(deltaToAdvance);
-    storyboardPlayer.fillPlayBuffer();
+void OutputBoard::tick(millisec timeDelta)
+{
+  if (timeDelta == 0)
+    return;
 
-    // Update outputs at 60Hz
-    timeSinceLastOutputRefresh += deltaToAdvance;
-    if (timeSinceLastOutputRefresh > 1000 / 20)
+  time += timeDelta;
+  timeDeltaForPlay += timeDelta;
+
+  storyboardPlayer.advance(timeDelta);
+
+  // Update outputs at 60Hz
+  timeSinceLastOutputRefresh += timeDelta;
+  if (timeSinceLastOutputRefresh > 1000 / 60)
+  {
+    timeSinceLastOutputRefresh = 0;
+
+    auto storyboardTime = storyboardPlayer.getStoryboardTime();
+    for (uint32_t i = 0; i < OutputCount; i++)
     {
-      timeSinceLastOutputRefresh = 0;
+      outputStates[i].update(storyboardTime);
+      int value = outputStates[i].value;
 
-      auto storyboardTime = storyboardPlayer.getStoryboardTime();
-      for (uint32_t i = 0; i < OutputCount; i++)
+      if (i < 12)
       {
-        outputStates[i].update(storyboardTime);
-        int value = outputStates[i].value;
-
-        if (i < 12)
-        {
-          //pwmOut[i].write(Utils::clamp01(value / 4096.0));
-        }
-        else
-        {
-          digitalOut[i - 12] = (value > 50) ? 0 : 1;
-        }
+        //pwmOut[i].write(Utils::clamp01(value / 4096.0));
+      }
+      else
+      {
+        digitalOut[i - 12] = (value > 50) ? 0 : 1;
       }
     }
   }
 }
 
-void OutputBoard::tick(millisec timeDelta)
-{
-  time += timeDelta;
-  timeDeltaForPlay += timeDelta;
-}
-
-void OutputBoard::onSetOutput(const PlayBufferEntry* pbEntry)
+void OutputBoard::onSetOutput(const PlayBufferEntry *pbEntry)
 {
   int outputId = pbEntry->outputId;
   if (outputId >= 1 && outputId <= 16)
   {
     outputStates[outputId - 1].set(pbEntry->entry.value,
-                                   pbEntry->entry.time, 
+                                   pbEntry->entry.time,
                                    pbEntry->entry.duration);
   }
 }

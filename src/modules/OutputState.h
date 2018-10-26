@@ -23,22 +23,39 @@ struct OutputState
   inline void set(int newTo, millisec newStartTime, millisec newDuration)
   {
     from = value;
-    to = newTo;
+    to = Utils::clamp(newTo, 0, 4096);
     startTime = newStartTime;
-    duration = newDuration;
+    duration = Utils::clamp(newDuration, 0, 60 * 1000);
   }
-  inline void update(int time)
+  void update(int time)
   {
-    if (duration <= 0)
+    int timeSinceStart = time - startTime;
+    if (timeSinceStart < 0)
     {
-      value = startTime > time ? from : to;
+      value = from;
+    }
+    else if (timeSinceStart >= duration)
+    {
+      value = to;
     }
     else
     {
+      /*
+      delta = 60            [0 - 4_096]
+      duration = 1500       [0 - 60_000]
+      timeSinceStart = 700  [0 - 60_000]
+      deltaSinceStart = delta * timeSinceStart / duration
+      We don't overflow multiplicating before dividing because
+      delta * timeSinceStart <= 4_096 * 60_000 <= 245_760_000
+      */
+
       int delta = to - from;
-      float t = (((float)time) - startTime) / duration;
-      t = Utils::clamp01(t); //Don't go above 1, so the result is between 'from' and 'to' values
-      value = from + (int)(delta * t);
+      value = from + (delta * timeSinceStart) / duration;
+
+      //Slow because floating point is used
+      //float t = (((float)time) - startTime) / duration;
+      //t = Utils::clamp01(t); //Don't go above 1, so the result is between 'from' and 'to' values
+      //value = from + (int)(delta * t);
     }
   }
 };
