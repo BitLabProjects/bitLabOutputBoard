@@ -21,13 +21,15 @@ public:
   // ------------------
 
 private:
+  uint32_t hardwareId;
   RingNetwork* ringNetwork;
-  DigitalOut led;
-  millisec64 time;
+  //DigitalOut led;
+  volatile millisec64 time;
+  volatile millisec64 timeDeltaForPlay;
   millisec64 timeSinceLastOutputRefresh;
 
   static const uint32_t OutputCount = 16;
-  FastPWM pwmOut[12];
+  //FastPWM pwmOut[12];
   DigitalOut digitalOut[4];
   OutputState outputStates[OutputCount];
 
@@ -36,7 +38,7 @@ private:
 
   void onPacketReceived(RingPacket*, PTxAction*);
 
-  void onSetOutput(int output, int value, millisec startTime, millisec duration);
+  void onSetOutput(const PlayBufferEntry* pbEntry);
 };
 
 #endif

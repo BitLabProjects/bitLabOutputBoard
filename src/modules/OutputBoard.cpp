@@ -1,13 +1,14 @@
 #include "OutputBoard.h"
 
-OutputBoard::OutputBoard() : led(PC_13),
-                             pwmOut({{PA_8}, {PA_9}, {PA_10}, {PA_11}, {PA_15}, {PB_3}, {PB_4}, {PB_5}, {PB_11}, {PB_10}, {PB_1}, {PB_0}}),
-                             digitalOut({{PB_12}, {PB_13}, {PB_14}, {PB_15}}),
+OutputBoard::OutputBoard() : //led(PC_13),
+                             //pwmOut({{PA_8}, {PA_9}, {PA_10}, {PA_11}, {PA_15}, {PB_3}, {PB_4}, {PB_5}, {PB_11}, {PB_10}, {PB_1}, {PB_0}}),
+                             digitalOut({{PC_13}, {PB_13}, {PB_14}, {PB_15}}),
                              storyboard(),
                              storyboardPlayer(&storyboard, callback(this, &OutputBoard::onSetOutput))
 {
-  led = 0; //0 means on, the led is pulled down
+  //led = 0; //0 means on, the led is pulled down
   time = 0;
+  timeDeltaForPlay = 0;
   timeSinceLastOutputRefresh = 0;
 
   for (uint32_t i = 0; i < OutputCount; i++)
@@ -18,6 +19,16 @@ OutputBoard::OutputBoard() : led(PC_13),
 
 void OutputBoard::init(const bitLabCore *core)
 {
+  if (false) {
+    // Disabled for now: no need to set priority because tickers do only a few assignments
+    // TIM4_IRQn is the timer used by mbed Ticker in STM32F1
+    // see framework-mbed\targets\TARGET_STM\TARGET_STM32F1\TARGET_NUCLEO_F103RB\device\hal_tick.h
+    HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_3);
+    HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(TIM4_IRQn, 7, 0);
+  }
+
+  hardwareId = core->getHardwareId();
   ringNetwork = (RingNetwork *)core->findModule("RingNetwork");
   if (ringNetwork != NULL)
   {
@@ -30,53 +41,57 @@ void OutputBoard::mainLoop()
   if (time > 3000)
   {
     time = 0;
-    led = !led;
+    //led = !led;
   }
 
-  storyboardPlayer.fillPlayBuffer();
+  __disable_irq();
+  millisec deltaToAdvance = timeDeltaForPlay;
+  timeDeltaForPlay = 0;
+  __enable_irq();
+
+  if (deltaToAdvance > 0) {
+    storyboardPlayer.advance(deltaToAdvance);
+    storyboardPlayer.fillPlayBuffer();
+
+    // Update outputs at 60Hz
+    timeSinceLastOutputRefresh += deltaToAdvance;
+    if (timeSinceLastOutputRefresh > 1000 / 20)
+    {
+      timeSinceLastOutputRefresh = 0;
+
+      auto storyboardTime = storyboardPlayer.getStoryboardTime();
+      for (uint32_t i = 0; i < OutputCount; i++)
+      {
+        outputStates[i].update(storyboardTime);
+        int value = outputStates[i].value;
+
+        if (i < 12)
+        {
+          //pwmOut[i].write(Utils::clamp01(value / 4096.0));
+        }
+        else
+        {
+          digitalOut[i - 12] = (value > 50) ? 0 : 1;
+        }
+      }
+    }
+  }
 }
 
 void OutputBoard::tick(millisec timeDelta)
 {
   time += timeDelta;
-
-  // Advance the storyboard
-  if (false)
-  {
-    /*
-  storyboardPlayer.advance(timeDelta);
-
-  // Update outputs at 60Hz
-  timeSinceLastOutputRefresh += timeDelta;
-  if (timeSinceLastOutputRefresh > 1000 / 60)
-  {
-    timeSinceLastOutputRefresh = 0;
-
-    auto storyboardTime = storyboardPlayer.getStoryboardTime();
-    for (uint32_t i = 0; i < OutputCount; i++)
-    {
-      outputStates[i].update(storyboardTime);
-      int value = outputStates[i].value;
-
-      if (i < 12)
-      {
-        pwmOut[i].write(Utils::clamp01(value / 4096.0));
-      }
-      else
-      {
-        digitalOut[i - 12] = (value == 0) ? 0 : 1;
-      }
-    }
-  }
-    */
-}
+  timeDeltaForPlay += timeDelta;
 }
 
-void OutputBoard::onSetOutput(int output, int value, millisec startTime, millisec duration)
+void OutputBoard::onSetOutput(const PlayBufferEntry* pbEntry)
 {
-  if (output >= 1 && output <= 16)
+  int outputId = pbEntry->outputId;
+  if (outputId >= 1 && outputId <= 16)
   {
-    outputStates[output].set(value, startTime, duration);
+    outputStates[outputId - 1].set(pbEntry->entry.value,
+                                   pbEntry->entry.time, 
+                                   pbEntry->entry.duration);
   }
 }
 
@@ -114,7 +129,7 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
       return; //Too short
 
     // Negate because 0 means down, the led is pulled down
-    led = !p->data[1];
+    //led = !p->data[1];
     break;
 
   case EMsgType::CreateStoryboard:
@@ -133,7 +148,7 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
       return; //Too short
 
     uint8_t timelinesCount = p->data[1];
-    millisec totalDuration = *((millisec *)&p->data[2]);
+    millisec totalDuration = p->getDataInt32(2);
     if (timelinesCount > 32)
     {
       // TODO Signal: can't have too many timelines, the data size is 256 bytes
@@ -147,7 +162,7 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
       auto offset = 6 + i * 2;
       uint8_t output = p->data[offset + 0];
       uint8_t entriesCapacity = p->data[offset + 1];
-      storyboard.addTimeline(0, output, entriesCapacity);
+      storyboard.addTimeline(hardwareId, output, entriesCapacity);
     }
   }
   break;
@@ -193,7 +208,7 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
       millisec time = p->getDataInt32(offset + 0);
       int32_t value = p->getDataInt32(offset + 4);
       millisec duration = p->getDataInt32(offset + 8);
-      timeline->setEntry(entryIdx, time, value, duration);
+      timeline->add(time, value, duration);
       entryIdx += 1;
     }
   }
@@ -213,8 +228,9 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     p->header.ttl = RingNetworkProtocol::ttl_max;
     // Fill data
     p->data[0] = EMsgType::TellStoryboardChecksum;
-    *(uint32_t *)(&p->data[1]) = crc32;
+    p->setDataUInt32(1, crc32);
     //
+
     *pTxAction = PTxAction::Send;
   }
   break;
@@ -253,7 +269,6 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     storyboardPlayer.stop();
   }
   break;
-  
 
   default:
     // Unknown, discard
