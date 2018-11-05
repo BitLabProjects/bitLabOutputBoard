@@ -20,14 +20,14 @@ struct OutputState
     startTime = 0;
     duration = 0;
   }
-  inline void set(int newTo, millisec newStartTime, millisec newDuration)
+  inline void set(int32_t newTo, millisec newStartTime, millisec newDuration)
   {
     from = value;
-    to = Utils::clamp(newTo, 0, 4096);
+    to = Utils::clamp(newTo, 0, 4095);
     startTime = newStartTime;
     duration = Utils::clamp(newDuration, 0, 60 * 1000);
   }
-  void update(int time)
+  void update(millisec time)
   {
     int timeSinceStart = time - startTime;
     if (timeSinceStart < 0)

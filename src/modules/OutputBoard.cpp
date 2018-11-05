@@ -1,8 +1,8 @@
 #include "OutputBoard.h"
 
 OutputBoard::OutputBoard() : //led(PC_13),
-                             //pwmOut({{PA_8}, {PA_9}, {PA_10}, {PA_11}, {PA_15}, {PB_3}, {PB_4}, {PB_5}, {PB_11}, {PB_10}, {PB_1}, {PB_0}}),
-                             digitalOut({{PC_13}, {PB_13}, {PB_14}, {PB_15}}),
+                             pwmOut({{PB_11}, {PB_10}, {PB_1}, {PB_0}, {PA_7}, {PA_6}, {PA_8}, {PA_9}, {PA_10}, {PA_11}, {PA_15}, {PB_3}}),
+                             digitalOut({{PA_5}, {PA_4}, {PA_3}, {PA_2}}),
                              storyboard(),
                              storyboardPlayer(&storyboard, callback(this, &OutputBoard::onSetOutput))
 {
@@ -73,6 +73,7 @@ void OutputBoard::tick(millisec timeDelta)
       if (i < 12)
       {
         //pwmOut[i].write(Utils::clamp01(value / 4096.0));
+        pwmOut[i] = (value > 50) ? 0 : 1;
       }
       else
       {
@@ -104,6 +105,7 @@ enum EMsgType
   Play = 7,
   Pause = 8,
   Stop = 9,
+  SetOutput = 10,
   DebugPrint = 255
 };
 
@@ -265,6 +267,29 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
   {
     // Data structure: Empty
     storyboardPlayer.stop();
+  }
+  break;
+
+  case EMsgType::SetOutput:
+  {
+    // Data structure:
+    // [1] = OutputId
+    // [2-5] = value
+
+    if (storyboardPlayer.isPlaying())
+      return; // Can't set output manually when playing
+
+    if (data_size < 1 + 1 + 4)
+      return; // Too short
+
+    uint8_t outputId = p->data[1];
+    uint32_t value = p->getDataUInt32(2);
+
+    if (outputId < 1 || outputId > OutputCount)
+      return; // Invalid output
+
+    // Use a negative start time so it will be applied: storyboard time is always positive
+    outputStates[outputId - 1].set(value, -1, 0);
   }
   break;
 

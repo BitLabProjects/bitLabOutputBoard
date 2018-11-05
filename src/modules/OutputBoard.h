@@ -29,7 +29,7 @@ private:
   millisec64 timeSinceLastOutputRefresh;
 
   static const uint32_t OutputCount = 16;
-  //FastPWM pwmOut[12];
+  DigitalOut pwmOut[12];
   DigitalOut digitalOut[4];
   OutputState outputStates[OutputCount];
 
