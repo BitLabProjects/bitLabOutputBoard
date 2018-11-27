@@ -23,7 +23,7 @@ public:
 private:
   uint32_t hardwareId;
   RingNetwork* ringNetwork;
-  //DigitalOut led;
+  DigitalOut led;
   volatile millisec64 time;
   volatile millisec64 timeDeltaForPlay;
   millisec64 timeSinceLastOutputRefresh;

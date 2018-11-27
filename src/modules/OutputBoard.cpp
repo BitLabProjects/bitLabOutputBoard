@@ -1,6 +1,6 @@
 #include "OutputBoard.h"
 
-OutputBoard::OutputBoard() : //led(PC_13),
+OutputBoard::OutputBoard() : led(PC_13),
                              pwmOut({{PB_11}, {PB_10}, {PB_1}, {PB_0}, {PA_7}, {PA_6}, {PA_8}, {PA_9}, {PA_10}, {PA_11}, {PA_15}, {PB_3}}),
                              digitalOut({{PA_5}, {PA_4}, {PA_3}, {PA_2}}),
                              storyboard(),
@@ -39,10 +39,10 @@ void OutputBoard::init(const bitLabCore *core)
 
 void OutputBoard::mainLoop()
 {
-  if (time > 3000)
+  if (time > 1000)
   {
     time = 0;
-    //led = !led;
+    led = !led;
   }
 
   storyboardPlayer.fillPlayBuffer();
@@ -73,11 +73,11 @@ void OutputBoard::tick(millisec timeDelta)
       if (i < 12)
       {
         //pwmOut[i].write(Utils::clamp01(value / 4096.0));
-        pwmOut[i] = (value > 50) ? 0 : 1;
+        pwmOut[i] = (value < 50) ? 0 : 1;
       }
       else
       {
-        digitalOut[i - 12] = (value > 50) ? 0 : 1;
+        digitalOut[i - 12] = (value < 50) ? 0 : 1;
       }
     }
   }
@@ -99,8 +99,8 @@ enum EMsgType
   SetLed = 1,
   CreateStoryboard = 2,
   SetTimelineEntries = 3,
-  GetStoryboardChecksum = 4,
-  TellStoryboardChecksum = 5,
+  GetState = 4,
+  TellState = 5,
   SetStoryboardTime = 6,
   Play = 7,
   Pause = 8,
@@ -214,21 +214,22 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
   }
   break;
 
-  case EMsgType::GetStoryboardChecksum:
+  case EMsgType::GetState:
   {
     // Data structure: Empty
 
     uint32_t crc32 = storyboard.calcCrc32(0);
 
     // Fill header
-    p->header.data_size = 1 + 4;
+    p->header.data_size = 1 + 4 + 4;
     p->header.control = 1;
     p->header.dst_address = p->header.src_address; // Respond to the sender
     p->header.src_address = ringNetwork->getAddress();
     p->header.ttl = RingNetworkProtocol::ttl_max;
     // Fill data
-    p->data[0] = EMsgType::TellStoryboardChecksum;
+    p->data[0] = EMsgType::TellState;
     p->setDataUInt32(1, crc32);
+    p->setDataUInt32(1 + 4, storyboardPlayer.getStoryboardTime());
     //
 
     *pTxAction = PTxAction::Send;
