@@ -6,9 +6,9 @@
 
 struct OutputState
 {
-  int value;
-  int from;
-  int to;
+  uint32_t value;
+  uint32_t from;
+  uint32_t to;
   millisec startTime;
   millisec duration;
 

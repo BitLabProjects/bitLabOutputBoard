@@ -1,10 +1,12 @@
 #include "bitLabCore\src\os\bitLabCore.h"
 #include "bitLabCore\src\net\RingNetwork.h"
 #include "modules\OutputBoard.h"
+#include "modules\Outputs12Pwm4Digital.h"
 
 bitLabCore core;
 RingNetwork rn(PB_6, PB_7, false);
-OutputBoard ob;
+Outputs12Pwm4Digital output12pwm4digital;
+OutputBoard ob(&output12pwm4digital);
 
 int main()
 {
@@ -12,17 +14,4 @@ int main()
   core.addModule(&rn);
   core.addModule(&ob);
   core.run();
-  
-  /*
-  Serial serial(PB_6, PB_7);
-  serial.baud(1200);
-  DigitalOut myled(PC_13);
-  while (1)
-  {
-    myled = 1;
-    wait(0.4);
-    serial.puts("Ciao mondo!\r\n");
-    myled = 0;
-    wait(0.4);
-  }*/
 }

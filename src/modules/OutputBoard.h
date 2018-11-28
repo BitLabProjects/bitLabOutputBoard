@@ -5,13 +5,13 @@
 #include "..\bitLabCore\src\net\RingNetwork.h"
 #include "..\bitLabCore\src\storyboard\Storyboard.h"
 #include "..\bitLabCore\src\storyboard\StoryboardPlayer.h"
-#include "FastPWM.h"
+#include "IOutputs.h"
 #include "OutputState.h"
 
 class OutputBoard : public CoreModule
 {
 public:
-  OutputBoard();
+  OutputBoard(IOutputs* outputs);
 
   // --- CoreModule ---
   const char* getName() { return "OutputBoard"; }
@@ -29,9 +29,8 @@ private:
   millisec64 timeSinceLastOutputRefresh;
 
   static const uint32_t OutputCount = 16;
-  DigitalOut pwmOut[12];
-  DigitalOut digitalOut[4];
   OutputState outputStates[OutputCount];
+  IOutputs* outputs;
 
   Storyboard storyboard;
   StoryboardPlayer storyboardPlayer;

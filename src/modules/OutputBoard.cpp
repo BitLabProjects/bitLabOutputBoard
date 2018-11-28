@@ -1,10 +1,9 @@
 #include "OutputBoard.h"
 
-OutputBoard::OutputBoard() : led(PC_13),
-                             pwmOut({{PB_11}, {PB_10}, {PB_1}, {PB_0}, {PA_7}, {PA_6}, {PA_8}, {PA_9}, {PA_10}, {PA_11}, {PA_15}, {PB_3}}),
-                             digitalOut({{PA_5}, {PA_4}, {PA_3}, {PA_2}}),
-                             storyboard(),
-                             storyboardPlayer(&storyboard, callback(this, &OutputBoard::onSetOutput))
+OutputBoard::OutputBoard(IOutputs *outputs) : led(PC_13),
+                                              outputs(outputs),
+                                              storyboard(),
+                                              storyboardPlayer(&storyboard, callback(this, &OutputBoard::onSetOutput))
 {
   //led = 0; //0 means on, the led is pulled down
   time = 0;
@@ -70,15 +69,7 @@ void OutputBoard::tick(millisec timeDelta)
       outputStates[i].update(storyboardTime);
       int value = outputStates[i].value;
 
-      if (i < 12)
-      {
-        //pwmOut[i].write(Utils::clamp01(value / 4096.0));
-        pwmOut[i] = (value < 50) ? 0 : 1;
-      }
-      else
-      {
-        digitalOut[i - 12] = (value < 50) ? 0 : 1;
-      }
+      outputs->SetOutput(i, value);
     }
   }
 }
