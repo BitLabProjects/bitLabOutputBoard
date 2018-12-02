@@ -1,12 +1,18 @@
 #include "bitLabCore\src\os\bitLabCore.h"
 #include "bitLabCore\src\net\RingNetwork.h"
 #include "modules\OutputBoard.h"
-#include "modules\Outputs12Pwm4Digital.h"
 
 bitLabCore core;
 RingNetwork rn(PB_6, PB_7, false);
-Outputs12Pwm4Digital output12pwm4digital;
-OutputBoard ob(&output12pwm4digital);
+
+#ifdef TRIAC
+#include "modules\Outputs8Triac.h"
+Outputs8Triac outputs;
+#else
+#include "modules\Outputs12Pwm4Digital.h"
+Outputs12Pwm4Digital outputs;
+#endif
+OutputBoard ob(&outputs);
 
 int main()
 {

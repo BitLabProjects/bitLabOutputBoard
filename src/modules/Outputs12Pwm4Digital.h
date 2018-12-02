@@ -8,7 +8,7 @@
 class Outputs12Pwm4Digital: public IOutputs {
 public:
   Outputs12Pwm4Digital();
-  void SetOutput(uint32_t idxOutput, uint32_t value);
+  void setOutput(uint32_t idxOutput, uint32_t value);
 
 private:
   DigitalOut pwmOut[12];

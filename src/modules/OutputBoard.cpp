@@ -49,6 +49,8 @@ void OutputBoard::mainLoop()
 
 void OutputBoard::tick(millisec timeDelta)
 {
+  outputs->onTick();
+  
   if (timeDelta == 0)
     return;
 
@@ -69,7 +71,7 @@ void OutputBoard::tick(millisec timeDelta)
       outputStates[i].update(storyboardTime);
       int value = outputStates[i].value;
 
-      outputs->SetOutput(i, value);
+      outputs->setOutput(i, value);
     }
   }
 }

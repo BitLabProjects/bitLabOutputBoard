@@ -5,7 +5,8 @@
 
 class IOutputs {
 public:
-  virtual void SetOutput(uint32_t idxOutput, uint32_t value) = 0;
+  virtual void setOutput(uint32_t idxOutput, uint32_t value) = 0;
+  virtual void onTick() {};
 
 protected:
   IOutputs() {

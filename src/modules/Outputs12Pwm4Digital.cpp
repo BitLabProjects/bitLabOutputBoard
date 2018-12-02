@@ -5,7 +5,7 @@ Outputs12Pwm4Digital::Outputs12Pwm4Digital() : pwmOut({{PB_11}, {PB_10}, {PB_1},
 {
 }
 
-void Outputs12Pwm4Digital::SetOutput(uint32_t idxOutput, uint32_t value)
+void Outputs12Pwm4Digital::setOutput(uint32_t idxOutput, uint32_t value)
 {
   if (idxOutput < 12)
   {
