@@ -94,7 +94,7 @@ enum EMsgType
   SetTimelineEntries = 3,
   GetState = 4,
   TellState = 5,
-  SetStoryboardTime = 6,
+  SyncStoryboardTime = 6,
   Play = 7,
   Pause = 8,
   Stop = 9,
@@ -117,7 +117,10 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
   auto msgType = (EMsgType)p->data[0];
 
   if (p->isBroadcast()) {
-    if (msgType == EMsgType::Play || msgType == EMsgType::Pause || msgType == EMsgType::Stop) {
+    if (msgType == EMsgType::Play || 
+        msgType == EMsgType::Pause || 
+        msgType == EMsgType::Stop || 
+        msgType == EMsgType::SyncStoryboardTime) {
       // Ok
     } else {
       return; // The other messages are not supported in a broadcast
@@ -238,17 +241,21 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
   }
   break;
 
-  case EMsgType::SetStoryboardTime:
+  case EMsgType::SyncStoryboardTime:
   {
     // Data structure:
     // [1-4] = storyboard time
 
     if (data_size < 1 + 4)
-      return; //Too short
+      return; // Too short
 
-    millisec storyboardTime = *((millisec *)&p->data[1]);
-    // TODO
-    //storyboardPlayer.setStoryboardTime(storyboardTime);
+    if (!storyboardPlayer.isPlaying()) 
+      return; // Only available while playing
+
+    millisec targetStoryboardTime = *((millisec *)&p->data[1]);
+    // Instead of setting the current storyboard time, which is difficult because we'd need to handle buffering flushing
+    // calculate the delta with the current time and introduce a slowdown or an acceleration until we catch up
+    storyboardPlayer.setStoryboardTimeSyncDelta(targetStoryboardTime - storyboardPlayer.getStoryboardTime());
   }
   break;
 
