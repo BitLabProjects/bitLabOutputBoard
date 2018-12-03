@@ -115,6 +115,15 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     return; //Too short
 
   auto msgType = (EMsgType)p->data[0];
+
+  if (p->isBroadcast()) {
+    if (msgType == EMsgType::Play || msgType == EMsgType::Pause || msgType == EMsgType::Stop) {
+      // Ok
+    } else {
+      return; // The other messages are not supported in a broadcast
+    }
+  }
+
   switch (msgType)
   {
   case EMsgType::SetLed:
