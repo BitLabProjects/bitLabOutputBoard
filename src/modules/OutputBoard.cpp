@@ -246,16 +246,7 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
     // Data structure:
     // [1-4] = storyboard time
 
-    if (data_size < 1 + 4)
-      return; // Too short
-
-    if (!storyboardPlayer.isPlaying()) 
-      return; // Only available while playing
-
-    millisec targetStoryboardTime = *((millisec *)&p->data[1]);
-    // Instead of setting the current storyboard time, which is difficult because we'd need to handle buffering flushing
-    // calculate the delta with the current time and introduce a slowdown or an acceleration until we catch up
-    storyboardPlayer.setStoryboardTimeSyncDelta(targetStoryboardTime - storyboardPlayer.getStoryboardTime());
+    return;
   }
   break;
 
