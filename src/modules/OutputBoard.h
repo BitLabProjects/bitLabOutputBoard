@@ -25,6 +25,9 @@ private:
   RingNetwork* ringNetwork;
   DigitalOut led;
   volatile millisec64 time;
+  // trimInterval is the number of milliseconds after which a millisecond is added or removed
+  volatile millisec trimInterval;
+  volatile millisec trimCounter;
   volatile millisec64 timeDeltaForPlay;
   millisec64 timeSinceLastOutputRefresh;
 

@@ -1,6 +1,8 @@
 #include "OutputBoard.h"
 
 OutputBoard::OutputBoard(IOutputs *outputs) : led(PC_13),
+                                              trimInterval(0),
+                                              trimCounter(0),
                                               outputs(outputs),
                                               storyboard(),
                                               storyboardPlayer(&storyboard, callback(this, &OutputBoard::onSetOutput))
@@ -38,7 +40,7 @@ void OutputBoard::init(const bitLabCore *core)
 
 void OutputBoard::mainLoop()
 {
-  if (time > 1000)
+  if (time > (storyboardPlayer.isPlaying() ? 500 : 1000))
   {
     time = 0;
     led = !led;
@@ -49,8 +51,27 @@ void OutputBoard::mainLoop()
 
 void OutputBoard::tick(millisec timeDelta)
 {
+  if (trimCounter > 0)
+  {
+    trimCounter -= 1;
+    if (trimCounter == 0)
+    {
+      // Positive values means add a millisec, negative values means subtract
+      if (trimInterval > 0)
+      {
+        trimCounter = +trimInterval;
+        timeDelta += 1;
+      }
+      else
+      {
+        trimCounter = -trimInterval;
+        timeDelta -= 1;
+      }
+    }
+  }
+
   outputs->onTick();
-  
+
   if (timeDelta == 0)
     return;
 
@@ -99,6 +120,8 @@ enum EMsgType
   Pause = 8,
   Stop = 9,
   SetOutput = 10,
+  SetTrimInterval = 11,
+  Replay = 12,
   DebugPrint = 255
 };
 
@@ -116,13 +139,18 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
 
   auto msgType = (EMsgType)p->data[0];
 
-  if (p->isBroadcast()) {
-    if (msgType == EMsgType::Play || 
-        msgType == EMsgType::Pause || 
-        msgType == EMsgType::Stop || 
-        msgType == EMsgType::SyncStoryboardTime) {
+  if (p->isBroadcast())
+  {
+    if (msgType == EMsgType::Play ||
+        msgType == EMsgType::Pause ||
+        msgType == EMsgType::Stop ||
+        msgType == EMsgType::Replay ||
+        msgType == EMsgType::SyncStoryboardTime)
+    {
       // Ok
-    } else {
+    }
+    else
+    {
       return; // The other messages are not supported in a broadcast
     }
   }
@@ -268,6 +296,9 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
   {
     // Data structure: Empty
     storyboardPlayer.stop();
+    for(auto i=0; i<OutputCount; i++) {
+      outputStates[i].reset();
+    }
   }
   break;
 
@@ -291,6 +322,44 @@ void OutputBoard::onPacketReceived(RingPacket *p, PTxAction *pTxAction)
 
     // Use a negative start time so it will be applied: storyboard time is always positive
     outputStates[outputId - 1].set(value, -1, 0);
+  }
+  break;
+
+  case EMsgType::SetTrimInterval:
+  {
+    // Data structure:
+    // [1-4] = TrimInterval
+
+    if (data_size < 1 + 4)
+      return; // Too short
+
+    auto newTrimInterval = p->getDataInt32(1);
+    if (newTrimInterval == 0)
+    {
+      trimInterval = 0;
+      trimCounter = 0;
+    }
+    else if (newTrimInterval > 0)
+    {
+      trimInterval = Utils::clamp(trimInterval, 10, 5000);
+      trimCounter = +trimInterval;
+    }
+    else
+    {
+      trimInterval = Utils::clamp(trimInterval, -5000, -10);
+      trimCounter = -trimInterval;
+    }
+  }
+  break;
+
+  case EMsgType::Replay:
+  {
+    // Data structure: Empty
+    storyboardPlayer.stop();
+    for(auto i=0; i<OutputCount; i++) {
+      outputStates[i].reset();
+    }
+    storyboardPlayer.play();
   }
   break;
 

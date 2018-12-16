@@ -8,6 +8,9 @@ RingNetwork rn(PB_6, PB_7, false);
 #ifdef TRIAC
 #include "modules\Outputs8Triac.h"
 Outputs8Triac outputs;
+#elif DIGITALPWM
+#include "modules\Outputs16DigitalPwm.h"
+Outputs16DigitalPwm outputs;
 #else
 #include "modules\Outputs12Pwm4Digital.h"
 Outputs12Pwm4Digital outputs;
