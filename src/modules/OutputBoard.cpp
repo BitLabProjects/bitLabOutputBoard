@@ -51,24 +51,24 @@ void OutputBoard::mainLoop()
 
 void OutputBoard::tick(millisec timeDelta)
 {
-  if (trimCounter > 0)
-  {
-    trimCounter -= 1;
-    if (trimCounter == 0)
-    {
-      // Positive values means add a millisec, negative values means subtract
-      if (trimInterval > 0)
-      {
-        trimCounter = +trimInterval;
-        timeDelta += 1;
-      }
-      else
-      {
-        trimCounter = -trimInterval;
-        timeDelta -= 1;
-      }
-    }
-  }
+  // if (trimCounter > 0)
+  // {
+  //   trimCounter -= 1;
+  //   if (trimCounter == 0)
+  //   {
+  //     // Positive values means add a millisec, negative values means subtract
+  //     if (trimInterval > 0)
+  //     {
+  //       trimCounter = +trimInterval;
+  //       timeDelta += 1;
+  //     }
+  //     else
+  //     {
+  //       trimCounter = -trimInterval;
+  //       timeDelta -= 1;
+  //     }
+  //   }
+  // }
 
   outputs->onTick();
 

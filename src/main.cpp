@@ -11,6 +11,9 @@ Outputs8Triac outputs;
 #elif DIGITALPWM
 #include "modules\Outputs16DigitalPwm.h"
 Outputs16DigitalPwm outputs;
+#elif DIGITAL2PWM14
+#include "modules\Outputs2Digital14Pwm.h"
+Outputs2Digital14Pwm outputs;
 #else
 #include "modules\Outputs12Pwm4Digital.h"
 Outputs12Pwm4Digital outputs;
